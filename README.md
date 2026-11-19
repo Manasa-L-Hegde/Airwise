@@ -2,6 +2,8 @@
 
 > Winter smog is outside the window. AirWise turns **live air quality** into a **personal plan**: low-emission daily routines, indoor air hacks and greener alternatives, each with its **direct impact explained**.
 
+🌐 **Live Demo:** [AirWise - Urban Air Quality Assistant](https://airwise-xg65.onrender.com/)
+
 Built for PromptWars Challenge 06. Python, FastAPI, Google Gemini, Open-Meteo.
 
 ## What it does
