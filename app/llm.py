@@ -41,6 +41,10 @@ SYSTEM_PROMPT = (
     "6. For health questions, end with a short reminder to see a doctor if symptoms persist."
 )
 
+MAX_RETRIES = 1
+RETRY_DELAY_S = 1.0
+TRANSIENT_CODES = {429, 500, 502, 503, 504}
+
 _MARKDOWN = re.compile(r"[*_`#>]+")
 _MAX_CHARS = 900
 
@@ -57,6 +61,16 @@ def _clean(text: str | None) -> str | None:
         end = max(cut.rfind(". "), cut.rfind("."))
         cleaned = cut[: end + 1] if end > 200 else cut.rstrip() + "..."
     return cleaned
+
+
+def _config(types, model: str, system: str):
+    """Generation config. Gemini 2.5 Flash 'thinking' tokens count against the output
+    cap and can leave an empty answer, so thinking is switched off for it."""
+    kwargs = {"system_instruction": system, "temperature": 0.4, "max_output_tokens": 2048}
+    name = model.lower()
+    if "2.5" in name and "pro" not in name:
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
+    return types.GenerateContentConfig(**kwargs)
 
 
 def _gemini_generate(settings: Settings) -> tuple[Generate | None, str]:
@@ -76,9 +90,7 @@ def _gemini_generate(settings: Settings) -> tuple[Generate | None, str]:
         response = await client.aio.models.generate_content(
             model=settings.gemini_model,
             contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system, temperature=0.4, max_output_tokens=1024
-            ),
+            config=_config(types, settings.gemini_model, system),
         )
         return response.text or ""
 
@@ -101,17 +113,24 @@ class Narrator:
     async def _run(self, prompt: str) -> str | None:
         if self._generate is None:
             return None
-        try:
-            text = await asyncio.wait_for(
-                self._generate(SYSTEM_PROMPT, prompt), timeout=self._timeout
-            )
-        except Exception as exc:  # noqa: BLE001 - any failure must degrade gracefully
-            code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
-            self.last_error = f"{type(exc).__name__}" + (f" (HTTP {code})" if code else "")
-            log.warning("LLM call failed: %s", self.last_error)
-            return None
-        self.last_error = None
-        return _clean(text)
+        text: str | None = None
+        for attempt in range(1 + MAX_RETRIES):
+            try:
+                text = await asyncio.wait_for(
+                    self._generate(SYSTEM_PROMPT, prompt), timeout=self._timeout
+                )
+                break
+            except Exception as exc:  # noqa: BLE001 - any failure must degrade gracefully
+                code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+                self.last_error = f"{type(exc).__name__}" + (f" (HTTP {code})" if code else "")
+                log.warning("LLM call failed: %s", self.last_error)
+                if code in TRANSIENT_CODES and attempt < MAX_RETRIES:
+                    await asyncio.sleep(RETRY_DELAY_S * (attempt + 1))
+                    continue
+                return None
+        cleaned = _clean(text)
+        self.last_error = None if cleaned else "EmptyResponse"
+        return cleaned
 
     async def coach_note(self, facts: dict) -> str | None:
         prompt = (

@@ -159,8 +159,8 @@ async def health(request: Request) -> dict:
         "status": "ok",
         "version": __version__,
         "ai_enabled": narrator.enabled,
-        "ai_status": narrator.status,
-        "ai_last_error": narrator.last_error,
+        "ai_status": narrator.status,  # ready | no_key | sdk_missing
+        "ai_last_error": narrator.last_error,  # error class only, never secrets
     }
 
 

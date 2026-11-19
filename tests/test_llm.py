@@ -77,3 +77,79 @@ def test_long_output_is_truncated_on_sentence():
     text = "This is a sentence. " * 100
     cleaned = _clean(text)
     assert cleaned is not None and len(cleaned) <= 900 and cleaned.endswith(".")
+
+
+def test_status_and_last_error_reporting():
+    assert Narrator(SETTINGS).status == "no_key"
+
+    async def boom(system, prompt):
+        raise RuntimeError("x")
+
+    narrator = Narrator(SETTINGS, boom)
+    assert narrator.status == "ready" and narrator.last_error is None
+    run(narrator.coach_note(FACTS))
+    assert narrator.last_error == "RuntimeError"
+
+
+def test_empty_response_is_reported():
+    async def empty(system, prompt):
+        return ""
+
+    narrator = Narrator(SETTINGS, empty)
+    assert run(narrator.coach_note(FACTS)) is None
+    assert narrator.last_error == "EmptyResponse"
+
+
+def test_config_disables_thinking_only_for_flash_25():
+    from google.genai import types
+
+    from app.llm import _config
+
+    assert _config(types, "gemini-2.5-flash", "s").thinking_config.thinking_budget == 0
+    assert _config(types, "gemini-2.5-pro", "s").thinking_config is None
+    assert _config(types, "gemini-2.0-flash", "s").thinking_config is None
+
+
+class _HttpError(Exception):
+    def __init__(self, code):
+        super().__init__("err")
+        self.code = code
+
+
+def test_retries_once_on_transient_error(monkeypatch):
+    monkeypatch.setattr("app.llm.RETRY_DELAY_S", 0)
+    calls = []
+
+    async def flaky(system, prompt):
+        calls.append(1)
+        if len(calls) == 1:
+            raise _HttpError(503)
+        return "Recovered answer."
+
+    assert run(Narrator(SETTINGS, flaky).coach_note(FACTS)) == "Recovered answer."
+    assert len(calls) == 2
+
+
+def test_no_retry_on_client_error(monkeypatch):
+    monkeypatch.setattr("app.llm.RETRY_DELAY_S", 0)
+    calls = []
+
+    async def bad_key(system, prompt):
+        calls.append(1)
+        raise _HttpError(400)
+
+    narrator = Narrator(SETTINGS, bad_key)
+    assert run(narrator.coach_note(FACTS)) is None
+    assert len(calls) == 1 and "400" in narrator.last_error
+
+
+def test_gives_up_after_one_retry(monkeypatch):
+    monkeypatch.setattr("app.llm.RETRY_DELAY_S", 0)
+    calls = []
+
+    async def always(system, prompt):
+        calls.append(1)
+        raise _HttpError(429)
+
+    assert run(Narrator(SETTINGS, always).coach_note(FACTS)) is None
+    assert len(calls) == 2
