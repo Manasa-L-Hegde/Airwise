@@ -14,6 +14,7 @@ import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from app.config import Settings
 
@@ -63,7 +64,7 @@ def _clean(text: str | None) -> str | None:
     return cleaned
 
 
-def _config(types, model: str, system: str):
+def _config(types: Any, model: str, system: str) -> Any:
     """Generation config. Gemini 2.5 Flash 'thinking' tokens count against the output
     cap and can leave an empty answer, so thinking is switched off for it."""
     kwargs = {"system_instruction": system, "temperature": 0.4, "max_output_tokens": 2048}
@@ -101,6 +102,8 @@ class Narrator:
     def __init__(self, settings: Settings, generate: Generate | None = None) -> None:
         self._timeout = settings.llm_timeout_s
         self.last_error: str | None = None
+        self._generate: Generate | None
+        self.status: str
         if generate is not None:
             self._generate, self.status = generate, "ready"
         else:
@@ -132,7 +135,7 @@ class Narrator:
         self.last_error = None if cleaned else "EmptyResponse"
         return cleaned
 
-    async def coach_note(self, facts: dict) -> str | None:
+    async def coach_note(self, facts: dict[str, Any]) -> str | None:
         prompt = (
             f"FACTS: {json.dumps(facts, ensure_ascii=False)}\n\n"
             "Write a short, encouraging coach note for today: say what the air means for this "
@@ -140,7 +143,7 @@ class Narrator:
         )
         return await self._run(prompt)
 
-    async def answer(self, question: str, facts: dict) -> str | None:
+    async def answer(self, question: str, facts: dict[str, Any]) -> str | None:
         prompt = (
             f"FACTS: {json.dumps(facts, ensure_ascii=False)}\n\n"
             f"<user_question>{question}</user_question>\n\n"

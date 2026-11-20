@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 CommuteMode = Literal["car", "two_wheeler", "public_transport", "walk_cycle", "work_from_home"]
 CookingFuel = Literal["lpg", "induction", "biomass"]
+Category = Literal["routine", "indoor", "alternative"]
 
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f<>]")
 
@@ -67,7 +68,7 @@ class AskRequest(AssistRequest):
 
 class Action(BaseModel):
     id: str
-    category: Literal["routine", "indoor", "alternative"]
+    category: Category
     priority: int = Field(ge=1, le=3, description="1 = do this first")
     title: str
     why: str

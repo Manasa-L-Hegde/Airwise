@@ -106,8 +106,10 @@ async def fetch_air(
     client: httpx.AsyncClient, lat: float, lon: float, cache: TTLCache | None = None
 ) -> AirReading:
     key = (round(lat, 2), round(lon, 2))
-    if cache is not None and (cached := cache.get(key)) is not None:
-        return cached
+    if cache is not None:
+        cached = cache.get(key)
+        if isinstance(cached, AirReading):
+            return cached
 
     payload = await _get_json(
         client,
@@ -132,7 +134,8 @@ async def fetch_air(
     except (KeyError, ValueError) as exc:
         raise AirDataError("missing observation time") from exc
 
-    hourly = payload.get("hourly") if isinstance(payload.get("hourly"), dict) else {}
+    raw_hourly = payload.get("hourly")
+    hourly: dict[str, Any] = raw_hourly if isinstance(raw_hourly, dict) else {}
     times = hourly.get("time")
     reading = AirReading(
         observed_at=observed,

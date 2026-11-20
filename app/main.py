@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -54,7 +55,7 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     app.state.settings = settings
     app.state.http = httpx.AsyncClient(
@@ -82,7 +83,9 @@ app = FastAPI(
 
 # ---- Middleware --------------------------------------------------------------------
 @app.middleware("http")
-async def guard_and_secure(request: Request, call_next):
+async def guard_and_secure(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
         return _error(413, "payload_too_large", "Request body is too large.")
@@ -131,7 +134,7 @@ def _client_key(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def limited(name: str):
+def limited(name: str) -> Callable[[Request], Awaitable[None]]:
     async def dependency(request: Request) -> None:
         if not request.app.state.limiters[name].allow(_client_key(request)):
             raise ApiError(429, "rate_limited", "Too many requests. Please wait a minute.")
@@ -153,7 +156,7 @@ async def _report(request: Request, req: AssistRequest) -> service.Report:
 
 
 @app.get("/api/health")
-async def health(request: Request) -> dict:
+async def health(request: Request) -> dict[str, Any]:
     narrator = request.app.state.narrator
     return {
         "status": "ok",

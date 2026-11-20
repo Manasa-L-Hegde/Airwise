@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app import advisor
 from app.airdata import AirReading
@@ -51,7 +52,7 @@ def window_out(outlook: Outlook | None) -> WindowOut | None:
     )
 
 
-def llm_facts(report: Report, profile: Profile) -> dict:
+def llm_facts(report: Report, profile: Profile) -> dict[str, Any]:
     """Minimal, non-identifying facts handed to the LLM. No coordinates are sent."""
     window = window_out(report.outlook)
     return {

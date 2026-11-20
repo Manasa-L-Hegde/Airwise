@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # 🌿 AirWise: Urban Air Quality Assistant
 
@@ -8,7 +8,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Google Gemini](https://img.shields.io/badge/Google%20Gemini-3.5%20Flash--Lite-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![Open-Meteo](https://img.shields.io/badge/Data-Open--Meteo%20CAMS-orange)](https://open-meteo.com)
-[![Tests](https://img.shields.io/badge/Tests-86%20Passed-brightgreen?logo=pytest&logoColor=white)](https://pytest.org)
+[![Tests](https://img.shields.io/badge/Tests-92%20Passed-brightgreen?logo=pytest&logoColor=white)](https://pytest.org)
 [![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-black?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
