@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # 🌿 AirWise: Urban Air Quality Assistant
 
@@ -256,11 +256,12 @@ Content-Type: application/json
 The test suite runs **100% offline** using mock HTTP transports and mock LLM generators:
 
 ```bash
-# Run 86 test cases across AQI maths, advisor logic, LLM safety, & API endpoints
+# Run 92 test cases across AQI maths, advisor logic, LLM safety, & API endpoints
 pytest
 
 # Run fast code linting and style checks
 ruff check .
+mypy          # strict static type check
 ```
 
 ---
